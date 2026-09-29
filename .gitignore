@@ -1,0 +1,19 @@
+# Node modules
+node_modules/
+**/node_modules/
+
+# Environment files
+.env
+**/.env
+
+# Logs
+*.log
+
+# Private keys and secrets
+*.pem
+
+# Build files
+dist/
+**/dist/
+
+build-feedback.txt

@@ -1,0 +1,102 @@
+pipeline {
+    agent any
+
+    stages {
+
+        stage('Docker Check') {
+            steps {
+                bat '''
+                    set "DOCKER_BIN=C:\\Users\\GANPATI\\AppData\\Local\\Programs\\DockerDesktop\\resources\\bin"
+                    "%DOCKER_BIN%\\docker.exe" --version
+                    "%DOCKER_BIN%\\docker-compose.exe" version
+                '''
+            }
+        }
+
+        stage('Build Docker Images') {
+            steps {
+                withCredentials([string(credentialsId: 'skillswap-jwt-secret', variable: 'JWT_SECRET')]) {
+                    bat '''
+                        set "DOCKER_BIN=C:\\Users\\GANPATI\\AppData\\Local\\Programs\\DockerDesktop\\resources\\bin"
+                        set "PATH=%DOCKER_BIN%;%PATH%"
+
+                        docker-compose.exe build
+                    '''
+                }
+            }
+        }
+
+        stage('Start SkillSwap') {
+            steps {
+                withCredentials([string(credentialsId: 'skillswap-jwt-secret', variable: 'JWT_SECRET')]) {
+                    bat '''
+                        set "DOCKER_BIN=C:\\Users\\GANPATI\\AppData\\Local\\Programs\\DockerDesktop\\resources\\bin"
+                        set "PATH=%DOCKER_BIN%;%PATH%"
+
+                        docker-compose.exe up -d
+                    '''
+                }
+            }
+        }
+
+        stage('Check Containers') {
+            steps {
+                bat '''
+                    set "DOCKER_BIN=C:\\Users\\GANPATI\\AppData\\Local\\Programs\\DockerDesktop\\resources\\bin"
+                    set "PATH=%DOCKER_BIN%;%PATH%"
+
+                    docker-compose.exe ps
+                '''
+            }
+        }
+
+        stage('Backend Health Check') {
+            steps {
+                bat '''
+                    curl.exe http://localhost:5000/api/health
+                '''
+            }
+        }
+    }
+
+    post {
+        success {
+            bat '''
+                if not exist "C:\\JenkinsFeedback" mkdir "C:\\JenkinsFeedback"
+
+                echo.>> "C:\\JenkinsFeedback\\build-feedback.txt"
+                echo ================================================ >> "C:\\JenkinsFeedback\\build-feedback.txt"
+                echo Build Number: %BUILD_NUMBER% >> "C:\\JenkinsFeedback\\build-feedback.txt"
+                echo Build Status: SUCCESS >> "C:\\JenkinsFeedback\\build-feedback.txt"
+                echo Project: SkillSwap >> "C:\\JenkinsFeedback\\build-feedback.txt"
+                echo Job Name: %JOB_NAME% >> "C:\\JenkinsFeedback\\build-feedback.txt"
+                echo Docker Deployment: SUCCESS >> "C:\\JenkinsFeedback\\build-feedback.txt"
+                echo ================================================ >> "C:\\JenkinsFeedback\\build-feedback.txt"
+            '''
+        }
+
+        failure {
+            bat '''
+                if not exist "C:\\JenkinsFeedback" mkdir "C:\\JenkinsFeedback"
+
+                echo.>> "C:\\JenkinsFeedback\\build-feedback.txt"
+                echo ================================================ >> "C:\\JenkinsFeedback\\build-feedback.txt"
+                echo Build Number: %BUILD_NUMBER% >> "C:\\JenkinsFeedback\\build-feedback.txt"
+                echo Build Status: FAILURE >> "C:\\JenkinsFeedback\\build-feedback.txt"
+                echo Project: SkillSwap >> "C:\\JenkinsFeedback\\build-feedback.txt"
+                echo Job Name: %JOB_NAME% >> "C:\\JenkinsFeedback\\build-feedback.txt"
+                echo Docker Deployment: FAILED >> "C:\\JenkinsFeedback\\build-feedback.txt"
+                echo ================================================ >> "C:\\JenkinsFeedback\\build-feedback.txt"
+            '''
+        }
+
+        always {
+            bat '''
+                set "DOCKER_BIN=C:\\Users\\GANPATI\\AppData\\Local\\Programs\\DockerDesktop\\resources\\bin"
+                set "PATH=%DOCKER_BIN%;%PATH%"
+
+                docker-compose.exe ps
+            '''
+        }
+    }
+}
